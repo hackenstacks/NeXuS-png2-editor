@@ -173,6 +173,8 @@ def index():
   .btn-ghost:hover   {{ color: var(--text); border-color: var(--muted); }}
   .btn-green   {{ background: var(--green); color: #000; border-color: var(--green); }}
   .btn-green:hover {{ background: #00e07a; }}
+  .btn-orange  {{ background: var(--orange); color: #000; border-color: var(--orange); }}
+  .btn-orange:hover {{ background: #e07800; }}
 
   .editor-body {{ display: grid; grid-template-columns: 240px 1fr; }}
   .editor-portrait {{ padding: 20px; border-right: 1px solid var(--border); }}
@@ -228,7 +230,8 @@ def index():
     <div class="editor-header">
       <h2 id="ed-title">Character</h2>
       <button class="btn btn-green"  onclick="saveCard()">💾 Save PNG</button>
-      <button class="btn btn-accent" onclick="exportRole()">⬡ Export → aichat Role</button>
+      <button class="btn btn-accent" onclick="exportRole()">⬡ Export .md</button>
+      <button class="btn btn-orange" onclick="exportJson()">&#123;&#125; Export JSON</button>
       <button class="btn btn-ghost"  onclick="closeEditor()">✕ Close</button>
     </div>
     <div class="editor-body">
@@ -382,6 +385,19 @@ async function exportRole() {{
   }});
   const d = await res.json();
   d.ok ? toast('Exported → ' + d.role_file + ' ✓') : toast(d.error, true);
+}}
+
+function exportJson() {{
+  const payload = collectFields();
+  const inner = payload.data || payload;
+  const name = (inner.name || 'character').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {{type: 'application/json'}});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Downloaded ' + name + '.json ✓');
 }}
 
 function closeEditor() {{
