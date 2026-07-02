@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NeXuS PNG² Editor — AI Character Card Editor</title>
+<meta name="description" content="View, edit and export AI character cards (chara_card_v2 PNG). One-click aichat role export. Part of the NeXuS stack.">
+<style>
+  :root {
+    --bg: #0a0e14; --surface: #0f1520; --surface2: #1a2233;
+    --border: #1e3a5f; --primary: #00d4ff; --accent: #7c3aed;
+    --green: #00ff88; --orange: #ff8c00; --red: #ff4444;
+    --text: #c9d1d9; --muted: #6e7681; --white: #e6edf3;
+    --mono: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+    --sans: 'Segoe UI', system-ui, sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--bg); color: var(--text); font-family: var(--sans); line-height: 1.6; }
+
+  /* ── Nav ── */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(10,14,20,0.92); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px; display: flex; align-items: center; height: 56px; gap: 24px;
+  }
+  .nav-logo { color: var(--primary); font-family: var(--mono); font-size: 15px;
+              font-weight: 700; letter-spacing: 2px; text-decoration: none; }
+  .nav-links { display: flex; gap: 20px; margin-left: auto; }
+  .nav-links a { color: var(--muted); text-decoration: none; font-size: 14px;
+                 transition: color 0.2s; }
+  .nav-links a:hover { color: var(--primary); }
+  .nav-btn { background: var(--primary); color: #000; padding: 6px 16px;
+             border-radius: 6px; font-weight: 700; font-size: 13px; text-decoration: none;
+             transition: background 0.2s; }
+  .nav-btn:hover { background: #00b8e0; color: #000; }
+
+  /* ── Hero ── */
+  .hero {
+    min-height: 92vh; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center; padding: 60px 24px;
+    background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0,212,255,0.08) 0%, transparent 70%),
+                radial-gradient(ellipse 60% 40% at 80% 80%, rgba(124,58,237,0.06) 0%, transparent 60%);
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background-image: linear-gradient(rgba(0,212,255,0.04) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(0,212,255,0.04) 1px, transparent 1px);
+    background-size: 40px 40px; pointer-events: none;
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--primary); font-family: var(--mono); font-size: 12px;
+    padding: 6px 14px; border-radius: 20px; margin-bottom: 28px;
+    letter-spacing: 1px;
+  }
+  .hero-badge::before { content: '⬡'; }
+  h1 {
+    font-size: clamp(36px, 7vw, 72px); font-weight: 800; line-height: 1.1;
+    color: var(--white); margin-bottom: 20px; position: relative;
+  }
+  h1 span { color: var(--primary); }
+  .hero-sub {
+    font-size: clamp(16px, 2.5vw, 20px); color: var(--muted);
+    max-width: 580px; margin: 0 auto 40px;
+  }
+  .hero-actions { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+  .btn-hero {
+    padding: 13px 28px; border-radius: 8px; font-size: 15px; font-weight: 700;
+    text-decoration: none; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px;
+  }
+  .btn-hero.primary { background: var(--primary); color: #000; }
+  .btn-hero.primary:hover { background: #00b8e0; transform: translateY(-1px); }
+  .btn-hero.ghost { background: transparent; color: var(--text);
+                    border: 1px solid var(--border); }
+  .btn-hero.ghost:hover { border-color: var(--primary); color: var(--primary); }
+
+  /* ── Terminal preview ── */
+  .terminal-wrap { margin-top: 60px; width: 100%; max-width: 640px; position: relative; }
+  .terminal {
+    background: #070b10; border: 1px solid var(--border); border-radius: 10px;
+    overflow: hidden; text-align: left; box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+  }
+  .terminal-bar {
+    background: var(--surface2); padding: 10px 16px;
+    display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--border);
+  }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot.red { background: #ff5f57; } .dot.yellow { background: #febc2e; } .dot.green { background: #28c840; }
+  .terminal-title { color: var(--muted); font-size: 12px; font-family: var(--mono); margin-left: 8px; }
+  .terminal-body { padding: 20px 22px; font-family: var(--mono); font-size: 13px; line-height: 2; }
+  .t-prompt { color: var(--green); } .t-cmd { color: var(--white); }
+  .t-out { color: var(--muted); } .t-url { color: var(--primary); }
+
+  /* ── Features ── */
+  section { padding: 80px 24px; }
+  .section-inner { max-width: 1100px; margin: 0 auto; }
+  .section-label { color: var(--primary); font-family: var(--mono); font-size: 12px;
+                   letter-spacing: 3px; text-transform: uppercase; margin-bottom: 12px; }
+  .section-title { font-size: clamp(28px, 4vw, 42px); font-weight: 800; color: var(--white);
+                   margin-bottom: 16px; }
+  .section-sub { color: var(--muted); font-size: 16px; max-width: 560px; margin-bottom: 52px; }
+
+  .features-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+  .feature-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 24px; transition: border-color 0.2s, transform 0.2s;
+  }
+  .feature-card:hover { border-color: var(--primary); transform: translateY(-2px); }
+  .feature-icon { font-size: 28px; margin-bottom: 14px; }
+  .feature-title { color: var(--white); font-weight: 700; font-size: 16px; margin-bottom: 8px; }
+  .feature-desc { color: var(--muted); font-size: 14px; line-height: 1.6; }
+
+  /* ── Export section ── */
+  .export-section { background: var(--surface); border-top: 1px solid var(--border);
+                    border-bottom: 1px solid var(--border); }
+  .export-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+  .export-card {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+    padding: 20px; display: flex; gap: 14px; align-items: flex-start;
+  }
+  .export-icon { font-size: 22px; flex-shrink: 0; margin-top: 2px; }
+  .export-title { color: var(--white); font-weight: 700; font-size: 14px; margin-bottom: 4px; font-family: var(--mono); }
+  .export-desc { color: var(--muted); font-size: 13px; line-height: 1.5; }
+
+  /* ── Install ── */
+  .install-steps { display: flex; flex-direction: column; gap: 20px; max-width: 680px; }
+  .step { display: flex; gap: 16px; }
+  .step-num { width: 32px; height: 32px; border-radius: 50%; background: var(--accent);
+              color: #fff; font-weight: 700; font-size: 14px; display: flex;
+              align-items: center; justify-content: center; flex-shrink: 0; margin-top: 4px; }
+  .step-body h3 { color: var(--white); font-size: 15px; margin-bottom: 8px; }
+  pre {
+    background: #070b10; border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px 16px; font-family: var(--mono); font-size: 13px;
+    color: var(--green); overflow-x: auto; margin-top: 8px; line-height: 1.8;
+  }
+  code { font-family: var(--mono); color: var(--primary); font-size: 13px; }
+
+  /* ── Footer ── */
+  footer {
+    background: var(--surface); border-top: 1px solid var(--border);
+    padding: 40px 24px; text-align: center;
+  }
+  .footer-inner { max-width: 800px; margin: 0 auto; }
+  .footer-logo { color: var(--primary); font-family: var(--mono); font-size: 18px;
+                 font-weight: 700; letter-spacing: 3px; margin-bottom: 12px; }
+  .footer-tagline { color: var(--muted); font-size: 14px; margin-bottom: 24px; }
+  .footer-links { display: flex; gap: 24px; justify-content: center; flex-wrap: wrap; margin-bottom: 24px; }
+  .footer-links a { color: var(--muted); text-decoration: none; font-size: 14px;
+                    transition: color 0.2s; }
+  .footer-links a:hover { color: var(--primary); }
+  .footer-copy { color: #3d4a5c; font-size: 12px; font-family: var(--mono); }
+
+  @media (max-width: 600px) {
+    nav { padding: 0 16px; }
+    .nav-links { display: none; }
+    .hero { padding: 40px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="#">⬡ PNG² EDITOR</a>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#export">Export</a>
+    <a href="#install">Install</a>
+    <a href="mailto:hackenstacks@gmail.com">Contact</a>
+  </div>
+  <a class="nav-btn" href="https://github.com/hackenstacks/NeXuS-png2-editor">GitHub →</a>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-badge">NeXuS Stack · chara_card_v2</div>
+  <h1>NeXuS <span>PNG²</span> Editor</h1>
+  <p class="hero-sub">
+    View, edit, and export AI character cards from your desktop.
+    Full chara_card_v2 support. One-click aichat role export. 100% local.
+  </p>
+  <div class="hero-actions">
+    <a class="btn-hero primary" href="https://github.com/hackenstacks/NeXuS-png2-editor">
+      ⬡ Get it on GitHub
+    </a>
+    <a class="btn-hero ghost" href="#install">Quick Start →</a>
+  </div>
+
+  <div class="terminal-wrap">
+    <div class="terminal">
+      <div class="terminal-bar">
+        <div class="dot red"></div><div class="dot yellow"></div><div class="dot green"></div>
+        <span class="terminal-title">foot — NeXuS</span>
+      </div>
+      <div class="terminal-body">
+        <div><span class="t-prompt">❯ </span><span class="t-cmd">git clone https://github.com/hackenstacks/NeXuS-png2-editor</span></div>
+        <div><span class="t-prompt">❯ </span><span class="t-cmd">pip install flask pillow</span></div>
+        <div><span class="t-prompt">❯ </span><span class="t-cmd">python3 nexus_png2_editor.py</span></div>
+        <div class="t-out">&nbsp;</div>
+        <div class="t-out">⬡ NeXuS PNG² Editor</div>
+        <div class="t-out">&nbsp; Cards dir : ~/01/ai-characters</div>
+        <div class="t-out">&nbsp; Open      : <span class="t-url">http://localhost:7420</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Features -->
+<section id="features">
+  <div class="section-inner">
+    <div class="section-label">What it does</div>
+    <h2 class="section-title">Everything your character cards need</h2>
+    <p class="section-sub">A single Python file. No database, no config required. Just point it at your cards directory.</p>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">🖼️</div>
+        <div class="feature-title">Visual Card Browser</div>
+        <div class="feature-desc">Grid view of all your PNG character cards with portraits, names, descriptions and tags. Live search to filter instantly.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">✏️</div>
+        <div class="feature-title">Full Field Editor</div>
+        <div class="feature-desc">Edit every field in the chara_card_v2 spec — name, description, personality, scenario, system prompt, first message, post-history instructions, tags, creator notes.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">💾</div>
+        <div class="feature-title">Save Back to PNG</div>
+        <div class="feature-desc">Writes your edits into the PNG tEXt chunk. The image pixel data is never touched — only the embedded character metadata changes.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⬡</div>
+        <div class="feature-title">aichat Role Export</div>
+        <div class="feature-desc">One click exports any card as a role file to ~/.config/aichat/roles/ — instantly available in the aichat playground Role dropdown.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">{}</div>
+        <div class="feature-title">JSON Export</div>
+        <div class="feature-desc">Download the full chara_card_v2 data as a .json file. Compatible with SillyTavern, TavernAI, and any tool that reads the spec.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🏴</div>
+        <div class="feature-title">100% Local & Private</div>
+        <div class="feature-desc">No cloud, no telemetry, no API keys. Runs on localhost:7420. Your character cards never leave your machine.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Export -->
+<section id="export" class="export-section">
+  <div class="section-inner">
+    <div class="section-label">Export Options</div>
+    <h2 class="section-title">Three ways to export</h2>
+    <p class="section-sub">Every card can be saved, exported as a role, or downloaded as JSON — from the same editor view.</p>
+    <div class="export-grid">
+      <div class="export-card">
+        <div class="export-icon">💾</div>
+        <div>
+          <div class="export-title">Save PNG</div>
+          <div class="export-desc">Writes edits back into the source PNG file. Non-destructive — image data unchanged, only the embedded chara metadata is updated.</div>
+        </div>
+      </div>
+      <div class="export-card">
+        <div class="export-icon">⬡</div>
+        <div>
+          <div class="export-title">Export .md → aichat</div>
+          <div class="export-desc">Merges description, personality, scenario, system_prompt and post_history_instructions into a single aichat role file. Appears in the playground immediately.</div>
+        </div>
+      </div>
+      <div class="export-card">
+        <div class="export-icon">{}</div>
+        <div>
+          <div class="export-title">Export JSON</div>
+          <div class="export-desc">Downloads the full chara_card_v2 JSON to your machine. Compatible with SillyTavern, TavernAI, and any tool that reads the standard spec.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Install -->
+<section id="install">
+  <div class="section-inner">
+    <div class="section-label">Getting Started</div>
+    <h2 class="section-title">Up in 60 seconds</h2>
+    <p class="section-sub">Two dependencies. One command to run. No database, no config file.</p>
+    <div class="install-steps">
+
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h3>Clone the repo</h3>
+          <pre>git clone https://github.com/hackenstacks/NeXuS-png2-editor
+cd NeXuS-png2-editor</pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h3>Install dependencies</h3>
+          <pre>pip install flask pillow</pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h3>Run the editor</h3>
+          <pre>python3 nexus_png2_editor.py</pre>
+          <p style="color:var(--muted);font-size:13px;margin-top:8px;">
+            Point at a custom cards directory: <code>CARDS_DIR=~/my-cards python3 nexus_png2_editor.py</code>
+          </p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <h3>Open in browser</h3>
+          <pre><span style="color:var(--primary)">http://localhost:7420</span></pre>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">★</div>
+        <div class="step-body">
+          <h3>Optional: Install aichat for role export</h3>
+          <pre># Download pre-built binary (Linux x86_64)
+wget https://github.com/sigoden/aichat/releases/latest/download/aichat-x86_64-unknown-linux-musl.tar.gz
+tar xzf aichat-*.tar.gz && mv aichat ~/.local/bin/
+
+# Or install via Cargo
+cargo install aichat
+
+# Start the playground
+aichat --serve
+# → http://localhost:8000/playground</pre>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-logo">⬡ NEXUS</div>
+    <div class="footer-tagline">Sane · Simple · Secure · Stealthy · Beautiful</div>
+    <div class="footer-links">
+      <a href="https://github.com/hackenstacks/NeXuS-png2-editor">GitHub</a>
+      <a href="https://github.com/hackenstacks/NeXuS-png2-editor/issues">Issues</a>
+      <a href="https://github.com/hackenstacks">@hackenstacks</a>
+      <a href="mailto:hackenstacks@gmail.com">hackenstacks@gmail.com</a>
+    </div>
+    <div class="footer-copy">Together Everyone Achieves More</div>
+  </div>
+</footer>
+
+</body>
+</html>
